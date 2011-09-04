@@ -80,6 +80,10 @@ function! s:ClangCompleteInit()
     let g:clang_auto_user_options = 'path, .clang_complete'
   endif
 
+  if !exists('g:mfic_filename')
+    let g:mfic_filename = ''
+  endif
+
   call LoadUserOptions()
 
   inoremap <expr> <buffer> <C-X><C-U> <SID>LaunchCompletion()
@@ -548,6 +552,13 @@ function! ClangGetUsr()
   endif
 endfunction
 
+function! ClangGetReferences()
+  if g:clang_use_library == 1
+    python vim.command('let l:list = ' + str(getCurrentReferences()))
+    new
+    call append(0, l:list)
+  endif
+endfunction
 
 function! s:HandlePossibleSelectionEnter()
   if pumvisible()

@@ -13,6 +13,20 @@ def initClangComplete(clang_complete_flags):
   complete_flags = int(clang_complete_flags)
   global debug
   debug = int(vim.eval("g:clang_debug")) == 1
+  mficFilename = vim.eval("g:mfic_filename")
+  global mfic_index
+  mfic_index = loadMficFromFile(mficFilename)
+
+def loadMficFromFile(filename):
+  try:
+    mfic = {}
+    f = open(filename)
+    for line in f:
+      tokens = line.strip().split('\t')
+      mfic[tokens[0]] = tokens[1:]
+    return mfic
+  except IOError, ValueError:
+    return {}
 
 # Get a tuple (fileName, fileContent) for the file opened in the current
 # vim buffer. The fileContent contains the unsafed buffer content.
@@ -260,6 +274,16 @@ def getCurrentUsr():
       return None
     cursor = nextCursor
   return ref.get_usr()
+
+def getCurrentReferences():
+  usr = getCurrentUsr()
+  if usr is None:
+    print "No USR found"
+    return
+  if (mfic_index.has_key(usr)):
+    return mfic_index[usr];
+  else:
+    print "No references to " + usr
 
 def getAbbr(strings):
   tmplst = filter(lambda x: x.isKindTypedText(), strings)
