@@ -542,6 +542,13 @@ function! ClangComplete(findstart, base)
 endif
 endfunction
 
+function! ClangGetUsr()
+  if g:clang_use_library == 1
+    python print getCurrentUsr()
+  endif
+endfunction
+
+
 function! s:HandlePossibleSelectionEnter()
   if pumvisible()
     let b:snippet_chosen = 1

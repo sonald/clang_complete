@@ -11,6 +11,8 @@ def initClangComplete(clang_complete_flags):
   translationUnits = dict()
   global complete_flags
   complete_flags = int(clang_complete_flags)
+  global debug
+  debug = int(vim.eval("g:clang_debug")) == 1
 
 # Get a tuple (fileName, fileContent) for the file opened in the current
 # vim buffer. The fileContent contains the unsafed buffer content.
@@ -62,6 +64,12 @@ def getCurrentTranslationUnit(update = False):
     elapsed = (time.time() - start)
     print "LibClang - First reparse (generate PCH cache): " + str(elapsed)
   return tu
+
+def getCurrentLine():
+  return int(vim.eval("line('.')"))
+
+def getCurrentColumn():
+  return int(vim.eval("col('.')"))
 
 def splitOptions(options):
   optsList = []
@@ -162,9 +170,6 @@ def getCurrentCompletionResults(line, column):
     print "LibClang - Code completion time: " + str(elapsed)
   return cr
 
-def completeCurrentAt(line, column):
-  print "\n".join(map(str, getCurrentCompletionResults().results))
-
 def formatChunkForWord(chunk):
   return chunk.spelling
 
@@ -215,8 +220,6 @@ class CompleteThread(threading.Thread):
     CompleteThread.lock.release()
 
 def getCurrentCompletions(base):
-  global debug
-  debug = int(vim.eval("g:clang_debug")) == 1
   priority = vim.eval("g:clang_sort_algo") == 'priority'
   line = int(vim.eval("line('.')"))
   column = int(vim.eval("b:col"))
@@ -243,6 +246,20 @@ def getCurrentCompletions(base):
     key = getAbbrevation
   sortedResult = sorted(filteredResult, None, key)
   return map(formatResult, sortedResult)
+
+def getCurrentUsr():
+  tu = getCurrentTranslationUnit(True)
+  file = tu.getFile(vim.current.buffer.name)
+  loc = tu.getLocation(file, getCurrentLine(), getCurrentColumn())
+  cursor = tu.getCursor(loc)
+  ref = None
+  while (ref is None or ref == Cursor.nullCursor()):
+    ref = cursor.get_ref()
+    nextCursor = cursor.get_lexical_parent()
+    if (nextCursor is None or cursor == nextCursor):
+      return None
+    cursor = nextCursor
+  return ref.get_usr()
 
 def getAbbr(strings):
   tmplst = filter(lambda x: x.isKindTypedText(), strings)

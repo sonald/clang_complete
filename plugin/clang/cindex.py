@@ -538,6 +538,11 @@ class Cursor(Structure):
         return Cursor_spelling(self)
 
     @property
+    def display_name(self):
+        """Return the display name of the entity pointed at by the cursor."""
+        return Cursor_displayname(self)
+
+    @property
     def location(self):
         """
         Return the source location (the starting character) of the entity
@@ -567,6 +572,18 @@ class Cursor(Structure):
         Cursor_visit(self, Cursor_visit_callback(visitor), children)
         return iter(children)
 
+    def get_semantic_parent(self):
+      return Cursor_semantic_parent(self)
+
+    def get_lexical_parent(self):
+      return Cursor_lexical_parent(self)
+
+    def get_canonical(self):
+      return Cursor_canonical(self)
+
+    def get_ref(self):
+      return Cursor_ref(self)
+
     @staticmethod
     def from_result(res, fn, args):
         assert isinstance(res, Cursor)
@@ -574,6 +591,10 @@ class Cursor(Structure):
         if res == Cursor_null():
             return None
         return res
+
+    @staticmethod
+    def nullCursor():
+        return Cursor_null()
 
 ## CIndex Objects ##
 
@@ -936,6 +957,19 @@ class TranslationUnit(ClangObject):
 
         return None
 
+    def getLocation(self, file, line, column):
+        return TranslationUnit_getLocation(self, file, line, column)
+
+    def getLocationForOffset(self, file, offset):
+        return TranslationUnit_getLocationForOffset(self, file, offset)
+
+    def getFile(self, filename):
+        file =  TranslationUnit_getFile(self, filename)
+        return File(file)
+
+    def getCursor(self, sourceLocation):
+      return Cursor_get(self, sourceLocation)
+
 class Index(ClangObject):
     """
     The Index type provides the primary interface to the Clang CIndex library,
@@ -1084,7 +1118,6 @@ CursorKind_is_inv.argtypes = [CursorKind]
 CursorKind_is_inv.restype = bool
 
 # Cursor Functions
-# TODO: Implement this function
 Cursor_get = lib.clang_getCursor
 Cursor_get.argtypes = [TranslationUnit, SourceLocation]
 Cursor_get.restype = Cursor
@@ -1110,10 +1143,27 @@ Cursor_eq = lib.clang_equalCursors
 Cursor_eq.argtypes = [Cursor, Cursor]
 Cursor_eq.restype = c_uint
 
+Cursor_semantic_parent = lib.clang_getCursorSemanticParent
+Cursor_semantic_parent.argtypes = [Cursor]
+Cursor_semantic_parent.restype = Cursor
+
+Cursor_lexical_parent = lib.clang_getCursorLexicalParent
+Cursor_lexical_parent.argtypes = [Cursor]
+Cursor_lexical_parent.restype = Cursor
+
+Cursor_canonical = lib.clang_getCanonicalCursor
+Cursor_canonical.argtypes = [Cursor]
+Cursor_canonical.restype = Cursor
+
 Cursor_spelling = lib.clang_getCursorSpelling
 Cursor_spelling.argtypes = [Cursor]
 Cursor_spelling.restype = _CXString
 Cursor_spelling.errcheck = _CXString.from_result
+
+Cursor_displayname = lib.clang_getCursorDisplayName
+Cursor_displayname.argtypes = [Cursor]
+Cursor_displayname.restype = _CXString
+Cursor_displayname.errcheck = _CXString.from_result
 
 Cursor_loc = lib.clang_getCursorLocation
 Cursor_loc.argtypes = [Cursor]
@@ -1169,6 +1219,18 @@ TranslationUnit_spelling = lib.clang_getTranslationUnitSpelling
 TranslationUnit_spelling.argtypes = [TranslationUnit]
 TranslationUnit_spelling.restype = _CXString
 TranslationUnit_spelling.errcheck = _CXString.from_result
+
+TranslationUnit_getLocation = lib.clang_getLocation
+TranslationUnit_getLocation.argtypes = [TranslationUnit, File, c_uint, c_uint]
+TranslationUnit_getLocation.restype = SourceLocation
+
+TranslationUnit_getLocationForOffset = lib.clang_getLocationForOffset
+TranslationUnit_getLocationForOffset.argtypes = [TranslationUnit, File, c_uint]
+TranslationUnit_getLocationForOffset.restype = SourceLocation
+
+TranslationUnit_getFile = lib.clang_getFile
+TranslationUnit_getFile.argtypes = [TranslationUnit, c_char_p]
+TranslationUnit_getFile.restype = c_object_p
 
 TranslationUnit_dispose = lib.clang_disposeTranslationUnit
 TranslationUnit_dispose.argtypes = [TranslationUnit]
