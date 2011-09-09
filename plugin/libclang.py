@@ -281,15 +281,22 @@ def getCurrentUsr():
     cursor = nextCursor
   return ref.get_usr()
 
+def locationToQuickFix(location):
+  parts = location.split(':')
+  filename = parts[0]
+  line = int(parts[1])
+  return {'filename' : filename, 'lnum' : line}
+
 def getCurrentReferences():
   usr = getCurrentUsr()
   if usr is None:
     print "No USR found"
-    return
+    return None
   if (mfic_index.has_key(usr)):
-    return mfic_index[usr];
+    return map(locationToQuickFix, mfic_index[usr]);
   else:
     print "No references to " + usr
+    return None
 
 def getAbbr(strings):
   tmplst = filter(lambda x: x.isKindTypedText(), strings)
