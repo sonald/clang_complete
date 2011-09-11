@@ -3,6 +3,7 @@ import vim
 import time
 import re
 import threading
+import bsddb.db as db
 
 def initClangComplete(clang_complete_flags):
   global index
@@ -14,19 +15,17 @@ def initClangComplete(clang_complete_flags):
   global debug
   debug = int(vim.eval("g:clang_debug")) == 1
   mficFilename = vim.eval("g:mfic_filename")
-  global mfic_index
-  mfic_index = loadMficFromFile(mficFilename)
+  global mfic_db
+  mfic_db = loadMficFromFile(mficFilename)
 
 def loadMficFromFile(filename):
   try:
-    mfic = {}
-    f = open(filename)
-    for line in f:
-      tokens = line.strip().split('\t')
-      mfic[tokens[0]] = tokens[1:]
+    mfic = db.DB()
+    mfic.set_flags(db.DB_DUPSORT);
+    mfic.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
     return mfic
-  except IOError, ValueError:
-    return {}
+  except db.DBNoSuchFileError:
+    return None
 
 # Get a tuple (fileName, fileContent) for the file opened in the current
 # vim buffer. The fileContent contains the unsafed buffer content.
@@ -287,16 +286,24 @@ def locationToQuickFix(location):
   line = int(parts[1])
   return {'filename' : filename, 'lnum' : line}
 
+def getReferencesForUsr(usr):
+  cursor = mfic_db.cursor()
+  cursor.set(usr)
+  entry = cursor.next_dup()
+  while not entry is None:
+    yield entry[1]
+    entry = cursor.next_dup()
+  cursor.close()
+
 def getCurrentReferences():
   usr = getCurrentUsr()
   if usr is None:
     print "No USR found"
-    return None
-  if (mfic_index.has_key(usr)):
-    return map(locationToQuickFix, mfic_index[usr]);
-  else:
+    return []
+  result = map(locationToQuickFix, getReferencesForUsr(usr));
+  if not result:
     print "No references to " + usr
-    return None
+  return result
 
 def getAbbr(strings):
   tmplst = filter(lambda x: x.isKindTypedText(), strings)
