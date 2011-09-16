@@ -21,7 +21,7 @@ def initClangComplete(clang_complete_flags):
 def loadMficFromFile(filename):
   try:
     mfic = db.DB()
-    mfic.set_flags(db.DB_DUPSORT);
+    mfic.set_flags(db.DB_DUPSORT)
     mfic.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
     return mfic
   except db.DBNoSuchFileError:
@@ -288,8 +288,7 @@ def locationToQuickFix(location):
 
 def getReferencesForUsr(usr):
   cursor = mfic_db.cursor()
-  cursor.set(usr)
-  entry = cursor.next_dup()
+  entry = cursor.set(usr)
   while not entry is None:
     yield entry[1]
     entry = cursor.next_dup()
