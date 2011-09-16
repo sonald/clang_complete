@@ -11,3 +11,8 @@ You need Vim 7.3 or higher, compiled with python support and ideally, with
 the conceal feature.
 
 See doc/clang_complete.txt for help and license.
+
+
+This fork is intended for use with the clang_indexer project, which aims enable a "smart grep"
+through an entire project for a symbol:
+https://github.com/exclipy/clang_indexer
