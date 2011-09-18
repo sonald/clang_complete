@@ -14,18 +14,20 @@ def initClangComplete(clang_complete_flags):
   complete_flags = int(clang_complete_flags)
   global debug
   debug = int(vim.eval("g:clang_debug")) == 1
-  mficFilename = vim.eval("g:mfic_filename")
   global mfic_db
-  mfic_db = loadMficFromFile(mficFilename)
+  mfic_db = None
 
-def loadMficFromFile(filename):
+def loadMfic():
+  global mfic_db
+  if mfic_db is not None:
+    return
+  filename = vim.eval("g:mfic_filename")
   try:
-    mfic = db.DB()
-    mfic.set_flags(db.DB_DUPSORT)
-    mfic.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
-    return mfic
+    mfic_db = db.DB()
+    mfic_db.set_flags(db.DB_DUPSORT)
+    mfic_db.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
   except db.DBNoSuchFileError:
-    return None
+    mfic_db = None
 
 # Get a tuple (fileName, fileContent) for the file opened in the current
 # vim buffer. The fileContent contains the unsafed buffer content.
@@ -287,6 +289,7 @@ def locationToQuickFix(location):
   return {'filename' : filename, 'lnum' : line}
 
 def getReferencesForUsr(usr):
+  global mfic_db
   cursor = mfic_db.cursor()
   entry = cursor.set(usr)
   while not entry is None:
@@ -295,6 +298,11 @@ def getReferencesForUsr(usr):
   cursor.close()
 
 def getCurrentReferences():
+  global mfic_db
+  loadMfic()
+  if mfic_db is None:
+    print "MFIC not loaded"
+    return []
   usr = getCurrentUsr()
   if usr is None:
     print "No USR found"

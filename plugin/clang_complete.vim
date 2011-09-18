@@ -555,8 +555,12 @@ endfunction
 function! ClangGetReferences()
   if g:clang_use_library == 1
     python vim.command('let l:list = ' + str(getCurrentReferences()))
-    copen
-    call setqflist(l:list)
+    if !empty(l:list)
+      copen
+      call setqflist(l:list)
+    else
+      cclose
+    endif
   endif
 endfunction
 
