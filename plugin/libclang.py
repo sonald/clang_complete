@@ -289,9 +289,11 @@ def getReferencesForUsr(clic_db, usr):
 
 def locationToQuickFix(location):
   parts = location.split(':')
-  filename = parts[0]
-  line = int(parts[1])
-  return {'filename' : filename, 'lnum' : line}
+  kind = parts[0]
+  filename = parts[1]
+  line = int(parts[2])
+  column = int(parts[3])
+  return {'filename' : filename, 'lnum' : line, 'col' : column, 'text': kind}
 
 def getCurrentReferences():
   clic_db = loadClic()
