@@ -268,19 +268,19 @@ def getCurrentUsr():
     cursor = nextCursor
   return ref.get_usr()
 
-def loadMfic():
-  filename = vim.eval("g:mfic_filename")
-  mfic_db = db.DB()
-  mfic_db.set_flags(db.DB_DUPSORT)
+def loadClic():
+  filename = vim.eval("g:clic_filename")
+  clic_db = db.DB()
+  clic_db.set_flags(db.DB_DUPSORT)
   try:
-    mfic_db.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
-    return mfic_db
+    clic_db.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
+    return clic_db
   except db.DBNoSuchFileError:
-    mfic_db.close()
+    clic_db.close()
     return None
 
-def getReferencesForUsr(mfic_db, usr):
-  cursor = mfic_db.cursor()
+def getReferencesForUsr(clic_db, usr):
+  cursor = clic_db.cursor()
   entry = cursor.set(usr)
   while not entry is None:
     yield entry[1]
@@ -294,19 +294,19 @@ def locationToQuickFix(location):
   return {'filename' : filename, 'lnum' : line}
 
 def getCurrentReferences():
-  mfic_db = loadMfic()
-  if mfic_db is None:
-    print "MFIC not loaded"
+  clic_db = loadClic()
+  if clic_db is None:
+    print "CLIC not loaded"
     return []
   usr = getCurrentUsr()
   if usr is None:
     print "No USR found"
     result = []
   else:
-    result = map(locationToQuickFix, getReferencesForUsr(mfic_db, usr));
+    result = map(locationToQuickFix, getReferencesForUsr(clic_db, usr));
     if not result:
       print "No references to " + usr
-  mfic_db.close()
+  clic_db.close()
   return result
 
 def getAbbr(strings):
