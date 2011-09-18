@@ -14,20 +14,6 @@ def initClangComplete(clang_complete_flags):
   complete_flags = int(clang_complete_flags)
   global debug
   debug = int(vim.eval("g:clang_debug")) == 1
-  global mfic_db
-  mfic_db = None
-
-def loadMfic():
-  global mfic_db
-  if mfic_db is not None:
-    return
-  filename = vim.eval("g:mfic_filename")
-  try:
-    mfic_db = db.DB()
-    mfic_db.set_flags(db.DB_DUPSORT)
-    mfic_db.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
-  except db.DBNoSuchFileError:
-    mfic_db = None
 
 # Get a tuple (fileName, fileContent) for the file opened in the current
 # vim buffer. The fileContent contains the unsafed buffer content.
@@ -282,14 +268,18 @@ def getCurrentUsr():
     cursor = nextCursor
   return ref.get_usr()
 
-def locationToQuickFix(location):
-  parts = location.split(':')
-  filename = parts[0]
-  line = int(parts[1])
-  return {'filename' : filename, 'lnum' : line}
+def loadMfic():
+  filename = vim.eval("g:mfic_filename")
+  mfic_db = db.DB()
+  mfic_db.set_flags(db.DB_DUPSORT)
+  try:
+    mfic_db.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
+    return mfic_db
+  except db.DBNoSuchFileError:
+    mfic_db.close()
+    return None
 
-def getReferencesForUsr(usr):
-  global mfic_db
+def getReferencesForUsr(mfic_db, usr):
   cursor = mfic_db.cursor()
   entry = cursor.set(usr)
   while not entry is None:
@@ -297,19 +287,26 @@ def getReferencesForUsr(usr):
     entry = cursor.next_dup()
   cursor.close()
 
+def locationToQuickFix(location):
+  parts = location.split(':')
+  filename = parts[0]
+  line = int(parts[1])
+  return {'filename' : filename, 'lnum' : line}
+
 def getCurrentReferences():
-  global mfic_db
-  loadMfic()
+  mfic_db = loadMfic()
   if mfic_db is None:
     print "MFIC not loaded"
     return []
   usr = getCurrentUsr()
   if usr is None:
     print "No USR found"
-    return []
-  result = map(locationToQuickFix, getReferencesForUsr(usr));
-  if not result:
-    print "No references to " + usr
+    result = []
+  else:
+    result = map(locationToQuickFix, getReferencesForUsr(mfic_db, usr));
+    if not result:
+      print "No references to " + usr
+  mfic_db.close()
   return result
 
 def getAbbr(strings):
