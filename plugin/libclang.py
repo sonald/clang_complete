@@ -254,45 +254,65 @@ def getCurrentCompletions(base):
   sortedResult = sorted(filteredResult, None, key)
   return map(formatResult, sortedResult)
 
-def getCurrentUsr():
-  tu = getCurrentTranslationUnit(True)
-  file = tu.getFile(vim.current.buffer.name)
-  loc = tu.getLocation(file, getCurrentLine(), getCurrentColumn())
-  cursor = tu.getCursor(loc)
-  ref = None
-  while (ref is None or ref == Cursor.nullCursor()):
-    ref = cursor.get_ref()
-    nextCursor = cursor.get_lexical_parent()
-    if (nextCursor is None or cursor == nextCursor):
-      return None
-    cursor = nextCursor
-  return ref.get_usr()
-
-def loadClic():
-  filename = vim.eval("g:clic_filename")
-  clic_db = db.DB()
-  try:
-    clic_db.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
-    return clic_db
-  except db.DBNoSuchFileError:
-    clic_db.close()
-    return None
-
-def getReferencesForUsr(clic_db, usr):
-  locations = clic_db.get(usr, '')
-  return locations.split('\t')
-
-def locationToQuickFix(location):
-  parts = location.split(':')
-  kind = referenceKinds[int(parts[0])] or parts[0]
-  filename = parts[1]
-  line = int(parts[2])
-  column = int(parts[3])
-  return {'filename' : filename, 'lnum' : line, 'col' : column, 'text': kind}
-
 def getCurrentReferences():
-  clic_db = loadClic()
-  if clic_db is None:
+  def loadClic():
+    filename = vim.eval("g:clic_filename")
+    clicDb = db.DB()
+    try:
+      clicDb.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
+      return clicDb
+    except db.DBNoSuchFileError:
+      clicDb.close()
+      return None
+
+  def getCurrentUsr():
+    tu = getCurrentTranslationUnit(True)
+    file = tu.getFile(vim.current.buffer.name)
+    loc = tu.getLocation(file, getCurrentLine(), getCurrentColumn())
+    cursor = tu.getCursor(loc)
+    ref = None
+    while (ref is None or ref == Cursor.nullCursor()):
+      ref = cursor.get_ref()
+      nextCursor = cursor.get_lexical_parent()
+      if (nextCursor is None or cursor == nextCursor):
+        return None
+      cursor = nextCursor
+    return ref.get_usr()
+
+  def getReferencesForUsr(clicDb, usr):
+    locations = clicDb.get(usr, '')
+    return locations.split('\t')
+
+  def locationToQuickFix(location):
+    parts = location.split(':')
+    filename = parts[0]
+    line = int(parts[1])
+    column = int(parts[2])
+    kind = int(parts[3])
+    text = referenceKinds[kind] or kind
+    return {'filename' : filename, 'lnum' : line, 'col' : column, 'text': text, 'kind': kind}
+
+  def deduplicated(quickFixList):
+    def locationsMatch(item1, item2):
+      return item1['filename'] == item2['filename']\
+          and item1['lnum'] == item2['lnum']\
+          and item1['col'] == item2['col']
+    i = 0
+    while i < len(quickFixList):
+      if i > 0 and locationsMatch(quickFixList[i], quickFixList[i-1]):
+        # In general, a Kind of higher value is more interesting,
+        # so we deduplicate the list by removing the Kind of lower value
+        if quickFixList[i-1]['kind'] < quickFixList[i]['kind']:
+          quickFixList.pop(i-1)
+        else:
+          quickFixList.pop(i)
+      else:
+        i += 1
+    return quickFixList
+
+  # Start of getCurrentReferences():
+  clicDb = loadClic()
+  if clicDb is None:
     print "CLIC not loaded"
     return []
   usr = getCurrentUsr()
@@ -300,10 +320,12 @@ def getCurrentReferences():
     print "No USR found"
     result = []
   else:
-    result = map(locationToQuickFix, getReferencesForUsr(clic_db, usr));
+    result = deduplicated(map(locationToQuickFix, getReferencesForUsr(clicDb, usr)));
+    result.sort(lambda a, b: cmp((a['filename'], a['lnum'], a['col'], a['kind']),
+                                 (b['filename'], b['lnum'], b['col'], b['kind'])))
     if not result:
       print "No references to " + usr
-  clic_db.close()
+  clicDb.close()
   return result
 
 def getAbbr(strings):
@@ -420,41 +442,41 @@ kinds = dict({                                                                 \
 503 : '503'  # CXCursor_InclusionDirective                                     \
 })
 
-referenceKinds = dict({\
- 1 : 'type declaration',\
- 2 : 'type declaration',\
- 3 : 'type declaration',\
- 4 : 'type declaration',\
- 5 : 'type declaration',\
- 6 : 'member declaration',\
- 7 : 'enum declaration',\
- 8 : 'function declaration',\
- 9 : 'variable declaration',\
-10 : 'argument declaration',\
-20 : 'typedef declaration',\
-21 : 'method declaration',\
-22 : 'namespace declaration',\
-24 : 'constructor declaration',\
-25 : 'destructor declaration',\
-26 : 'conversion function declaration',\
-27 : 'template type parameter',\
-28 : 'non-type template parameter',\
-29 : 'template template parameter',\
-30 : 'function template',\
-31 : 'class template',\
-32 : 'class template partial specialization',\
-33 : 'namespace alias',\
-43 : 'type reference',\
-44 : 'base specifier',\
-45 : 'template reference',\
-46 : 'namespace reference',\
-47 : 'member reference',\
-48 : 'label reference',\
-49 : 'overloaded declaration reference',\
-100 : 'expression',\
-101 : 'reference',\
-102 : 'member reference',\
-103 : 'function call'\
+referenceKinds = dict({
+ 1 : 'type declaration',
+ 2 : 'type declaration',
+ 3 : 'type declaration',
+ 4 : 'type declaration',
+ 5 : 'type declaration',
+ 6 : 'member declaration',
+ 7 : 'enum declaration',
+ 8 : 'function declaration',
+ 9 : 'variable declaration',
+10 : 'argument declaration',
+20 : 'typedef declaration',
+21 : 'method declaration',
+22 : 'namespace declaration',
+24 : 'constructor declaration',
+25 : 'destructor declaration',
+26 : 'conversion function declaration',
+27 : 'template type parameter',
+28 : 'non-type template parameter',
+29 : 'template template parameter',
+30 : 'function template',
+31 : 'class template',
+32 : 'class template partial specialization',
+33 : 'namespace alias',
+43 : 'type reference',
+44 : 'base specifier',
+45 : 'template reference',
+46 : 'namespace reference',
+47 : 'member reference',
+48 : 'label reference',
+49 : 'overloaded declaration reference',
+100 : 'expression',
+101 : 'reference',
+102 : 'member reference',
+103 : 'function call'
 })
 
 # vim: set ts=2 sts=2 sw=2 expandtab :
