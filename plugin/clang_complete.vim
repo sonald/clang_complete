@@ -564,6 +564,30 @@ function! ClangGetReferences()
   endif
 endfunction
 
+function! ClangGetDeclarations()
+  if g:clang_use_library == 1
+    python vim.command('let l:list = ' + str(getCurrentReferences('declarations')))
+    if !empty(l:list)
+      copen
+      call setqflist(l:list)
+    else
+      cclose
+    endif
+  endif
+endfunction
+
+function! ClangGetSubclasses()
+  if g:clang_use_library == 1
+    python vim.command('let l:list = ' + str(getCurrentReferences('subclasses')))
+    if !empty(l:list)
+      copen
+      call setqflist(l:list)
+    else
+      cclose
+    endif
+  endif
+endfunction
+
 function! s:HandlePossibleSelectionEnter()
   if pumvisible()
     let b:snippet_chosen = 1

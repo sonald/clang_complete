@@ -254,7 +254,22 @@ def getCurrentCompletions(base):
   sortedResult = sorted(filteredResult, None, key)
   return map(formatResult, sortedResult)
 
-def getCurrentReferences():
+def getCurrentUsr():
+  tu = getCurrentTranslationUnit(True)
+  file = tu.getFile(vim.current.buffer.name)
+  loc = tu.getLocation(file, getCurrentLine(), getCurrentColumn())
+  cursor = tu.getCursor(loc)
+  ref = None
+  while (ref is None or ref == Cursor.nullCursor()):
+    ref = cursor.get_ref()
+    nextCursor = cursor.get_lexical_parent()
+    if (nextCursor is None or cursor == nextCursor):
+      return None
+    cursor = nextCursor
+  return ref.get_usr()
+
+# searchKind is one of ["declarations", "subclasses", None]
+def getCurrentReferences(searchKind = None):
   def loadClic():
     filename = vim.eval("g:clic_filename")
     clicDb = db.DB()
@@ -264,20 +279,6 @@ def getCurrentReferences():
     except db.DBNoSuchFileError:
       clicDb.close()
       return None
-
-  def getCurrentUsr():
-    tu = getCurrentTranslationUnit(True)
-    file = tu.getFile(vim.current.buffer.name)
-    loc = tu.getLocation(file, getCurrentLine(), getCurrentColumn())
-    cursor = tu.getCursor(loc)
-    ref = None
-    while (ref is None or ref == Cursor.nullCursor()):
-      ref = cursor.get_ref()
-      nextCursor = cursor.get_lexical_parent()
-      if (nextCursor is None or cursor == nextCursor):
-        return None
-      cursor = nextCursor
-    return ref.get_usr()
 
   def getReferencesForUsr(clicDb, usr):
     locations = clicDb.get(usr, '')
@@ -310,6 +311,16 @@ def getCurrentReferences():
         i += 1
     return quickFixList
 
+  def filtered(quickFixList):
+    vaildKinds = []
+    if searchKind == None:
+      return quickFixList
+    elif searchKind == 'declarations':
+      validKinds = range(1, 40)
+    elif searchKind == 'subclasses':
+      validKinds = [44]
+    return filter((lambda x: x['kind'] in validKinds), quickFixList)
+
   # Start of getCurrentReferences():
   clicDb = loadClic()
   if clicDb is None:
@@ -320,7 +331,7 @@ def getCurrentReferences():
     print "No USR found"
     result = []
   else:
-    result = deduplicated(map(locationToQuickFix, getReferencesForUsr(clicDb, usr)));
+    result = filtered(deduplicated(map(locationToQuickFix, getReferencesForUsr(clicDb, usr))))
     result.sort(lambda a, b: cmp((a['filename'], a['lnum'], a['col'], a['kind']),
                                  (b['filename'], b['lnum'], b['col'], b['kind'])))
     if not result:
@@ -462,8 +473,8 @@ referenceKinds = dict({
 27 : 'template type parameter',
 28 : 'non-type template parameter',
 29 : 'template template parameter',
-30 : 'function template',
-31 : 'class template',
+30 : 'function template declaration',
+31 : 'class template declaration',
 32 : 'class template partial specialization',
 33 : 'namespace alias',
 43 : 'type reference',
