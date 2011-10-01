@@ -284,7 +284,7 @@ def getReferencesForUsr(clic_db, usr):
 
 def locationToQuickFix(location):
   parts = location.split(':')
-  kind = parts[0]
+  kind = referenceKinds[int(parts[0])] or parts[0]
   filename = parts[1]
   line = int(parts[2])
   column = int(parts[3])
@@ -418,6 +418,43 @@ kinds = dict({                                                                 \
 501 : 'd',   # CXCursor_MacroDefinition                                        \
 502 : '502', # CXCursor_MacroInstantiation                                     \
 503 : '503'  # CXCursor_InclusionDirective                                     \
+})
+
+referenceKinds = dict({\
+ 1 : 'type declaration',\
+ 2 : 'type declaration',\
+ 3 : 'type declaration',\
+ 4 : 'type declaration',\
+ 5 : 'type declaration',\
+ 6 : 'member declaration',\
+ 7 : 'enum declaration',\
+ 8 : 'function declaration',\
+ 9 : 'variable declaration',\
+10 : 'argument declaration',\
+20 : 'typedef declaration',\
+21 : 'method declaration',\
+22 : 'namespace declaration',\
+24 : 'constructor declaration',\
+25 : 'destructor declaration',\
+26 : 'conversion function declaration',\
+27 : 'template type parameter',\
+28 : 'non-type template parameter',\
+29 : 'template template parameter',\
+30 : 'function template',\
+31 : 'class template',\
+32 : 'class template partial specialization',\
+33 : 'namespace alias',\
+43 : 'type reference',\
+44 : 'base specifier',\
+45 : 'template reference',\
+46 : 'namespace reference',\
+47 : 'member reference',\
+48 : 'label reference',\
+49 : 'overloaded declaration reference',\
+100 : 'expression',\
+101 : 'reference',\
+102 : 'member reference',\
+103 : 'function call'\
 })
 
 # vim: set ts=2 sts=2 sw=2 expandtab :
