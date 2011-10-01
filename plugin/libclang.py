@@ -271,7 +271,6 @@ def getCurrentUsr():
 def loadClic():
   filename = vim.eval("g:clic_filename")
   clic_db = db.DB()
-  clic_db.set_flags(db.DB_DUPSORT)
   try:
     clic_db.open(filename, None, db.DB_BTREE, db.DB_RDONLY)
     return clic_db
@@ -280,12 +279,8 @@ def loadClic():
     return None
 
 def getReferencesForUsr(clic_db, usr):
-  cursor = clic_db.cursor()
-  entry = cursor.set(usr)
-  while not entry is None:
-    yield entry[1]
-    entry = cursor.next_dup()
-  cursor.close()
+  locations = clic_db.get(usr, '')
+  return locations.split('\t')
 
 def locationToQuickFix(location):
   parts = location.split(':')
