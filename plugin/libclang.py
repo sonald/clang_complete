@@ -286,12 +286,25 @@ def getCurrentReferences(searchKind = None):
 
   def locationToQuickFix(location):
     parts = location.split(':')
+    if len(parts) != 4:
+      return {} # mark invalid items with an empty dict
     filename = parts[0]
     line = int(parts[1])
     column = int(parts[2])
     kind = int(parts[3])
     text = referenceKinds[kind] or kind
     return {'filename' : filename, 'lnum' : line, 'col' : column, 'text': text, 'kind': kind}
+
+  def filtered(quickFixList):
+    quickFixList = filter(lambda x: len(x) > 0, quickFixList) # remove invalid items
+    vaildKinds = []
+    if searchKind == None:
+      return quickFixList
+    elif searchKind == 'declarations':
+      validKinds = range(1, 40)
+    elif searchKind == 'subclasses':
+      validKinds = [44]
+    return filter(lambda x: x['kind'] in validKinds, quickFixList)
 
   def deduplicated(quickFixList):
     def locationsMatch(item1, item2):
@@ -303,6 +316,7 @@ def getCurrentReferences(searchKind = None):
       if i > 0 and locationsMatch(quickFixList[i], quickFixList[i-1]):
         # In general, a Kind of higher value is more interesting,
         # so we deduplicate the list by removing the Kind of lower value
+        # when we see two adjacent items at the same location
         if quickFixList[i-1]['kind'] < quickFixList[i]['kind']:
           quickFixList.pop(i-1)
         else:
@@ -310,16 +324,6 @@ def getCurrentReferences(searchKind = None):
       else:
         i += 1
     return quickFixList
-
-  def filtered(quickFixList):
-    vaildKinds = []
-    if searchKind == None:
-      return quickFixList
-    elif searchKind == 'declarations':
-      validKinds = range(1, 40)
-    elif searchKind == 'subclasses':
-      validKinds = [44]
-    return filter((lambda x: x['kind'] in validKinds), quickFixList)
 
   # Start of getCurrentReferences():
   clicDb = loadClic()
@@ -331,9 +335,10 @@ def getCurrentReferences(searchKind = None):
     print "No USR found"
     result = []
   else:
-    result = filtered(deduplicated(map(locationToQuickFix, getReferencesForUsr(clicDb, usr))))
+    result = filtered(map(locationToQuickFix, getReferencesForUsr(clicDb, usr)))
     result.sort(lambda a, b: cmp((a['filename'], a['lnum'], a['col'], a['kind']),
                                  (b['filename'], b['lnum'], b['col'], b['kind'])))
+    result = deduplicated(result)
     if not result:
       print "No references to " + usr
   clicDb.close()
