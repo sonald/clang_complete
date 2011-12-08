@@ -3,7 +3,7 @@ import vim
 import time
 import re
 import threading
-import bsddb.db as db
+import bsddb3.db as db
 
 def initClangComplete(clang_complete_flags):
   global index
